@@ -34,6 +34,11 @@ export default function DashboardPage() {
   }, [])
 
   const checkUser = async () => {
+    if (!supabase) {
+      router.push('/auth/login')
+      return
+    }
+    
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       router.push('/auth/login')
@@ -43,6 +48,8 @@ export default function DashboardPage() {
   }
 
   const fetchInvoices = async () => {
+    if (!supabase) return
+    
     try {
       const { data, error } = await supabase
         .from('invoices')
@@ -62,7 +69,9 @@ export default function DashboardPage() {
   }
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
+    if (supabase) {
+      await supabase.auth.signOut()
+    }
     router.push('/')
   }
 

@@ -29,16 +29,29 @@ interface Invoice {
   }>
 }
 
-export default function InvoiceDetailPage({ params }: { params: { id: string } }) {
+export default function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [invoice, setInvoice] = useState<Invoice | null>(null)
   const [loading, setLoading] = useState(true)
+  const [invoiceId, setInvoiceId] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
-    fetchInvoice()
-  }, [params.id])
+    const getParams = async () => {
+      const { id } = await params
+      setInvoiceId(id)
+    }
+    getParams()
+  }, [params])
+
+  useEffect(() => {
+    if (invoiceId) {
+      fetchInvoice()
+    }
+  }, [invoiceId])
 
   const fetchInvoice = async () => {
+    if (!invoiceId || !supabase) return
+    
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
@@ -52,7 +65,7 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
           *,
           invoice_lines (*)
         `)
-        .eq('id', params.id)
+        .eq('id', invoiceId)
         .single()
 
       if (error) {
@@ -69,13 +82,13 @@ export default function InvoiceDetailPage({ params }: { params: { id: string } }
   }
 
   const handleDownload = async () => {
-    if (!invoice?.csv_object_key) return
+    if (!invoice?.csv_object_key || !invoiceId || !supabase) return
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
 
-      const response = await fetch(`/api/invoices/${invoice.id}/download`, {
+      const response = await fetch(`/api/invoices/${invoiceId}/download`, {
         headers: {
           'Authorization': `Bearer ${session.access_token}`
         }

@@ -14,6 +14,12 @@ export default function SignUpPage() {
     setLoading(true)
     setMessage('')
 
+    if (!supabase) {
+      setMessage('Authentication service not available')
+      setLoading(false)
+      return
+    }
+
     try {
       const { error } = await supabase.auth.signUp({
         email,

@@ -3,9 +3,17 @@ import { supabaseAdmin } from '@/lib/supabase'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Database not configured' },
+        { status: 500 }
+      )
+    }
+
+    const { id } = await params
     const authHeader = request.headers.get('authorization')
     
     if (!authHeader) {
@@ -25,7 +33,7 @@ export async function GET(
     const { data: invoice, error: invoiceError } = await supabaseAdmin
       .from('invoices')
       .select('csv_object_key, status')
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', user.id)
       .single()
 

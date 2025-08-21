@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
 
-  if (code) {
+  if (code && supabase) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     
     if (!error) {
@@ -14,5 +14,5 @@ export async function GET(request: NextRequest) {
   }
 
   // Return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+  return NextResponse.redirect(`${origin}/auth/login?error=auth_callback_error`)
 }
