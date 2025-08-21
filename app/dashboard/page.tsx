@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { DashboardSkeleton } from '@/components/ui/skeleton'
 import { SampleInvoice } from '@/components/sample-invoice'
 import { FileUpload } from '@/components/file-upload'
+import RealFileUpload from '@/components/real-file-upload'
 import { ProcessingIndicator, SuccessIndicator } from '@/components/status-indicators'
 
 interface Invoice {
@@ -191,7 +192,7 @@ ${invoice.supplier_name || 'Demo Supplier'},${invoice.invoice_number || 'INV-001
         )}
 
         {/* Upload Section */}
-        <FileUpload onFileUpload={handleFileUpload} isUploading={isUploading} />
+        <RealFileUpload />
 
         {/* Invoices List */}
         <div>
