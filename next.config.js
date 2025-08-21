@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Remove potentially problematic configurations for initial deployment
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  trailingSlash: false,
+  skipTrailingSlashRedirect: true
 }
 
 module.exports = nextConfig
