@@ -1,0 +1,17 @@
+version: 1
+events:
+  - name: invoice.uploaded
+    data:
+      invoice_id: string
+      organization_id: string
+      user_id: string
+      object_key: string
+      page_count: number
+  - name: invoice.parsed
+    data:
+      invoice_id: string
+      confidence: number
+  - name: stripe.webhook
+    data:
+      type: string
+      raw: json

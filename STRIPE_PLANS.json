@@ -1,0 +1,31 @@
+{
+  "plans": [
+    {
+      "code": "free",
+      "priceMonthly": 0,
+      "pageLimit": 5,
+      "features": [
+        "Single user",
+        "5 pages monthly"
+      ]
+    },
+    {
+      "code": "starter",
+      "priceMonthly": 15,
+      "pageLimit": 150,
+      "features": [
+        "Single user",
+        "150 pages monthly"
+      ]
+    },
+    {
+      "code": "team",
+      "priceMonthly": 49,
+      "pageLimit": 1000,
+      "features": [
+        "Up to 5 users",
+        "1000 pages monthly"
+      ]
+    }
+  ]
+}
