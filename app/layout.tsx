@@ -7,6 +7,10 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'InvoiceEase - Convert PDF Invoices to CSV',
   description: 'Upload PDF invoices and download clean CSV files ready for accounting import',
+  icons: {
+    icon: '/favicon.svg',
+  },
+  manifest: '/manifest.json',
 }
 
 export default function RootLayout({

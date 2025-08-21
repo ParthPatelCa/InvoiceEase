@@ -1,0 +1,16 @@
+{
+  "name": "InvoiceEase",
+  "short_name": "InvoiceEase",
+  "description": "Convert PDF invoices to CSV files in seconds",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a365d",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
