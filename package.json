@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@sentry/nextjs": "^8.37.1",
+    "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.45.4",
+    "@types/react-dropzone": "^5.1.0",
     "@uploadthing/react": "^7.2.0",
     "inngest": "^3.23.0",
     "lucide-react": "^0.540.0",

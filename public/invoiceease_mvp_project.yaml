@@ -1,0 +1,95 @@
+from pathlib import Path
+
+yaml_content = """
+name: InvoiceEase MVP Project
+description: GitHub Project for building the MVP version of InvoiceEase
+version: 1
+
+issues:
+  - title: 🔐 Post-Signup Redirect & Auth Guard
+    body: |
+      - Redirect users to /dashboard after login/email confirmation
+      - Protect dashboard route using Supabase session
+      - Use useUser() to guard pages
+      - Add middleware.ts for route protection
+    labels: [auth, frontend, priority:high]
+    status: Backlog
+
+  - title: 🧱 Build Dashboard Layout
+    body: |
+      - Create DashboardLayout.tsx with sidebar and top nav
+      - Include user avatar, logout button
+      - Slot in child components like InvoiceTable
+    labels: [ui, layout]
+    status: Backlog
+
+  - title: 📄 Upload Button for Invoices
+    body: |
+      - Create UploadButton.tsx to select and upload PDF
+      - Upload to Supabase storage
+      - Trigger backend parse-invoice API
+    labels: [upload, storage]
+    status: Backlog
+
+  - title: 🧠 Parse PDF with OCR API
+    body: |
+      - Create /api/parse-invoice route
+      - Use lib/ocr.ts to connect to OCR.space
+      - Parse invoice fields: vendor, total, date
+    labels: [ocr, backend]
+    status: Backlog
+
+  - title: 🗃️ Supabase Table for Invoices
+    body: |
+      - Define 'invoices' table with fields:
+        id, user_id, file_url, parsed_data, status, created_at
+      - Add RLS policy for user-based access
+    labels: [database, supabase]
+    status: Backlog
+
+  - title: 📤 Export Parsed Data as CSV
+    body: |
+      - Add CSV download button in InvoiceTable
+      - Use lib/csv.ts to generate CSV from parsed JSON
+    labels: [csv, export]
+    status: Backlog
+
+  - title: 💳 Stripe Checkout Integration
+    body: |
+      - Add /api/create-checkout-session for paid plans
+      - Add webhook to update Supabase billing plan
+      - Restrict upload limits based on plan
+    labels: [billing, stripe]
+    status: Backlog
+
+  - title: ⚙️ Background OCR with Inngest
+    body: |
+      - Send event to Inngest when invoice uploaded
+      - Parse in background, update invoice record
+    labels: [background, inngest]
+    status: Backlog
+
+  - title: 🎨 Toasts & Error Notifications
+    body: |
+      - Use react-hot-toast or sonner for upload feedback
+      - Show success, loading, retry states
+    labels: [ui, polish]
+    status: Backlog
+
+  - title: 🔐 Supabase RLS for Invoice Security
+    body: |
+      - Add row-level security to invoices table
+      - Ensure only owner can read/write their data
+    labels: [supabase, security]
+    status: Backlog
+
+  - title: 📱 Mobile View Compatibility
+    body: |
+      - Ensure all components are responsive
+      - Test on mobile viewports
+    labels: [ui, responsive]
+    status: Backlog
+"""
+
+Path("invoiceease_mvp_project.yaml").write_text(yaml_content.strip())
+print("✅ YAML file created: invoiceease_mvp_project.yaml")

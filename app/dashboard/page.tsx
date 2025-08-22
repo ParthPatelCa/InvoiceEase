@@ -1,285 +1,214 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useUser } from '@/lib/auth'
+import { DashboardLayout } from '@/components/DashboardLayout'
+import { InvoiceTable } from '@/components/InvoiceTable'
+import { UploadButton } from '@/components/UploadButton'
+import { FileText, DollarSign, Clock, AlertCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
-import { DashboardSkeleton } from '@/components/ui/skeleton'
-import { SampleInvoice } from '@/components/sample-invoice'
-import { FileUpload } from '@/components/file-upload'
-import RealFileUpload from '@/components/real-file-upload'
-import { ProcessingIndicator, SuccessIndicator } from '@/components/status-indicators'
 
-interface Invoice {
-  id: string
-  source_object_key: string
-  status: string
-  supplier_name: string | null
-  invoice_number: string | null
-  total_amount: number | null
-  currency: string | null
-  created_at: string
-  csv_object_key: string | null
+interface DashboardStats {
+  totalInvoices: number
+  completedInvoices: number
+  processingInvoices: number
+  failedInvoices: number
+  totalAmount: number
 }
 
-export default function DashboardPage() {
-  const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
-  const [showSample, setShowSample] = useState(true)
-  const [isUploading, setIsUploading] = useState(false)
-  const router = useRouter()
+export default function Dashboard() {
+  const { user, loading } = useUser()
+  const [stats, setStats] = useState<DashboardStats>({
+    totalInvoices: 0,
+    completedInvoices: 0,
+    processingInvoices: 0,
+    failedInvoices: 0,
+    totalAmount: 0
+  })
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
-  useEffect(() => {
-    checkUser()
-    fetchInvoices()
-  }, [])
+  const fetchStats = async () => {
+    if (!user || !supabase) return
 
-  const checkUser = async () => {
-    if (!supabase) {
-      router.push('/auth/login')
-      return
-    }
-    
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      router.push('/auth/login')
-      return
-    }
-    setUser(user)
-  }
-
-  const fetchInvoices = async () => {
-    if (!supabase) return
-    
     try {
       const { data, error } = await supabase
         .from('invoices')
-        .select('*')
-        .order('created_at', { ascending: false })
+        .select('status, total_amount')
 
-      if (error) {
-        console.error('Error fetching invoices:', error)
-      } else {
-        setInvoices(data || [])
-      }
+      if (error) throw error
+
+      const stats = data.reduce((acc: DashboardStats, invoice: any) => {
+        acc.totalInvoices++
+        if (invoice.status === 'completed') {
+          acc.completedInvoices++
+          if (invoice.total_amount) {
+            acc.totalAmount += invoice.total_amount
+          }
+        } else if (invoice.status === 'pending' || invoice.status === 'processing') {
+          acc.processingInvoices++
+        } else if (invoice.status === 'failed') {
+          acc.failedInvoices++
+        }
+        return acc
+      }, {
+        totalInvoices: 0,
+        completedInvoices: 0,
+        processingInvoices: 0,
+        failedInvoices: 0,
+        totalAmount: 0
+      })
+
+      setStats(stats)
     } catch (error) {
-      console.error('Error:', error)
-    } finally {
-      setLoading(false)
+      console.error('Error fetching stats:', error)
     }
   }
 
-  const handleSignOut = async () => {
-    if (supabase) {
-      await supabase.auth.signOut()
+  useEffect(() => {
+    if (user) {
+      fetchStats()
     }
-    router.push('/')
-  }
+  }, [user, refreshTrigger])
 
-  const handleSampleProcess = () => {
-    // Add a sample invoice to the list
-    const sampleInvoice: Invoice = {
-      id: 'sample-' + Date.now(),
-      source_object_key: 'sample/acme-corp-invoice.pdf',
-      status: 'parsed',
-      supplier_name: 'ACME Corp',
-      invoice_number: 'INV-2024-001',
-      total_amount: 1250.00,
-      currency: 'USD',
-      created_at: new Date().toISOString(),
-      csv_object_key: 'sample/acme-corp-invoice.csv'
-    }
-    
-    setInvoices(prev => [sampleInvoice, ...prev])
-    setShowSample(false)
-  }
-
-  const handleFileUpload = async (file: File) => {
-    setIsUploading(true)
-    
-    try {
-      // Simulate file upload and processing
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Add the uploaded file as a new invoice
-      const newInvoice: Invoice = {
-        id: 'upload-' + Date.now(),
-        source_object_key: `uploads/${file.name}`,
-        status: 'parsing',
-        supplier_name: null,
-        invoice_number: null,
-        total_amount: null,
-        currency: null,
-        created_at: new Date().toISOString(),
-        csv_object_key: null
-      }
-      
-      setInvoices(prev => [newInvoice, ...prev])
-      
-      // Simulate processing completion
-      setTimeout(() => {
-        setInvoices(prev => prev.map(inv => 
-          inv.id === newInvoice.id 
-            ? { ...inv, status: 'parsed', supplier_name: 'Demo Supplier', total_amount: 999.99, currency: 'USD' }
-            : inv
-        ))
-      }, 3000)
-      
-    } catch (error) {
-      console.error('Upload error:', error)
-    } finally {
-      setIsUploading(false)
-    }
-  }
-
-  const handleDownloadCSV = (invoice: Invoice) => {
-    // In a real app, this would download the actual CSV
-    // For demo, we'll create a sample CSV
-    const csvContent = `Supplier,Invoice Number,Date,Amount,Currency
-${invoice.supplier_name || 'Demo Supplier'},${invoice.invoice_number || 'INV-001'},${new Date().toLocaleDateString()},${invoice.total_amount || '0.00'},${invoice.currency || 'USD'}`
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `invoice-${invoice.id}.csv`
-    link.click()
-    window.URL.revokeObjectURL(url)
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'parsed':
-        return 'text-green-600 bg-green-50 border-green-200'
-      case 'parsing':
-        return 'text-yellow-600 bg-yellow-50 border-yellow-200'
-      case 'failed':
-        return 'text-red-600 bg-red-50 border-red-200'
-      default:
-        return 'text-gray-600 bg-gray-50 border-gray-200'
-    }
+  const handleUploadComplete = () => {
+    setRefreshTrigger(prev => prev + 1)
   }
 
   if (loading) {
-    return <DashboardSkeleton />
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null // Will be redirected by middleware
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-background border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-muted-foreground">
-                {user?.email}
-              </span>
-              <button
-                onClick={handleSignOut}
-                className="text-sm text-muted-foreground hover:text-primary"
-              >
-                Sign out
-              </button>
+    <DashboardLayout user={user}>
+      <div className="space-y-6">
+        {/* Page Header */}
+        <div className="md:flex md:items-center md:justify-between">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
+              Dashboard
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Welcome back! Here's an overview of your invoice processing activity.
+            </p>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <FileText className="h-6 w-6 text-gray-400" />
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">
+                      Total Invoices
+                    </dt>
+                    <dd className="text-lg font-medium text-gray-900">
+                      {stats.totalInvoices}
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <DollarSign className="h-6 w-6 text-green-400" />
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">
+                      Total Amount
+                    </dt>
+                    <dd className="text-lg font-medium text-gray-900">
+                      ${stats.totalAmount.toFixed(2)}
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <Clock className="h-6 w-6 text-yellow-400" />
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">
+                      Processing
+                    </dt>
+                    <dd className="text-lg font-medium text-gray-900">
+                      {stats.processingInvoices}
+                    </dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white overflow-hidden shadow rounded-lg">
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <AlertCircle className="h-6 w-6 text-red-400" />
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">
+                      Failed
+                    </dt>
+                    <dd className="text-lg font-medium text-gray-900">
+                      {stats.failedInvoices}
+                    </dd>
+                  </dl>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Sample Invoice Section */}
-        {showSample && invoices.length === 0 && (
-          <SampleInvoice onSampleProcess={handleSampleProcess} />
-        )}
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Upload Section */}
+          <div className="lg:col-span-1">
+            <UploadButton onUploadComplete={handleUploadComplete} />
+          </div>
 
-        {/* Upload Section */}
-        <RealFileUpload />
-
-        {/* Invoices List */}
-        <div>
-          <h2 className="text-lg font-medium text-foreground mb-4">
-            Recent Invoices
-          </h2>
-
-          {invoices.length === 0 ? (
-            <div className="text-center py-12">
-              <svg
-                className="mx-auto h-12 w-12 text-muted-foreground"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-              <h3 className="mt-2 text-sm font-medium text-foreground">
-                No invoices yet
+          {/* Recent Activity */}
+          <div className="lg:col-span-2">
+            <div className="bg-white shadow rounded-lg p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Recent Activity
               </h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Drop a PDF to start, or use our sample file.
-              </p>
+              <div className="text-sm text-gray-500">
+                <p>• {stats.completedInvoices} invoices processed this month</p>
+                <p>• {stats.processingInvoices} invoices currently processing</p>
+                <p>• Last upload: {stats.totalInvoices > 0 ? 'Recently' : 'None yet'}</p>
+              </div>
             </div>
-          ) : (
-            <div className="bg-background shadow overflow-hidden sm:rounded-md">
-              <ul className="divide-y divide-border">
-                {invoices.map((invoice) => (
-                  <li key={invoice.id}>
-                    <div className="px-4 py-4 sm:px-6 hover:bg-muted/30">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-3">
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(
-                                invoice.status
-                              )}`}
-                            >
-                              {invoice.status}
-                            </span>
-                            <p className="text-sm font-medium text-foreground truncate">
-                              {invoice.supplier_name || 'Unknown Supplier'}
-                            </p>
-                          </div>
-                          <div className="mt-2 flex items-center text-sm text-muted-foreground space-x-4">
-                            <span>
-                              Invoice: {invoice.invoice_number || 'N/A'}
-                            </span>
-                            <span>
-                              Amount: {invoice.currency} {invoice.total_amount || 'N/A'}
-                            </span>
-                            <span>
-                              {new Date(invoice.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          {invoice.status === 'parsing' && (
-                            <ProcessingIndicator status={invoice.status} />
-                          )}
-                          {invoice.status === 'parsed' && invoice.csv_object_key && (
-                            <SuccessIndicator onDownload={() => handleDownloadCSV(invoice)} />
-                          )}
-                          {invoice.status === 'failed' && (
-                            <span className="text-red-600 text-sm">Failed to process</span>
-                          )}
-                          <a
-                            href={`/invoices/${invoice.id}`}
-                            className="text-primary hover:text-primary/80 text-sm font-medium"
-                          >
-                            View →
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          </div>
         </div>
-      </main>
-    </div>
+
+        {/* Invoice Table */}
+        <InvoiceTable refreshTrigger={refreshTrigger} />
+      </div>
+    </DashboardLayout>
   )
 }
