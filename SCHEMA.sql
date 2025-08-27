@@ -16,36 +16,45 @@ create table if not exists organization_members (
   primary key (organization_id, user_id)
 );
 
--- MVP Phase 1: Upload tracking table for spreadsheet processing
-create table if not exists uploads (
-  id text primary key, -- job_timestamp_random format
-  user_id uuid not null references auth.users(id) on delete cascade,
-  filename text not null,
-  file_size bigint not null,
-  file_type text not null,
-  status text not null default 'processing', -- processing | completed | failed
+-- InvoiceEase Database Schema
+-- Run this SQL in your Supabase SQL Editor
+
+-- Create uploads table for tracking PDF processing jobs
+CREATE TABLE IF NOT EXISTS uploads (
+  id text PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  filename text NOT NULL,
+  file_size bigint NOT NULL,
+  file_type text NOT NULL,
+  status text NOT NULL DEFAULT 'processing',
   invoice_count int,
-  download_count int not null default 0,
+  download_count int NOT NULL DEFAULT 0,
   error_message text,
-  created_at timestamptz not null default now(),
+  created_at timestamptz NOT NULL DEFAULT now(),
   processed_at timestamptz,
-  last_downloaded_at timestamptz
+  last_downloaded_at timestamptz,
+  -- New fields for real PDF extraction
+  extracted_data jsonb, -- Store the raw extracted invoice data as JSON
+  csv_data text -- Store the generated CSV data
 );
 
--- Enable RLS on uploads table
-alter table uploads enable row level security;
+-- Enable RLS
+ALTER TABLE uploads ENABLE ROW LEVEL SECURITY;
 
--- Allow users to insert their own uploads
-create policy "Users can insert their own uploads" on uploads
-  for insert with check (auth.uid() = user_id);
+-- Create RLS policies
+CREATE POLICY "Users can insert their own uploads" ON uploads
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
 
--- Allow users to view their own uploads
-create policy "Users can view their own uploads" on uploads
-  for select using (auth.uid() = user_id);
+CREATE POLICY "Users can view their own uploads" ON uploads
+  FOR SELECT USING (auth.uid() = user_id);
 
--- Allow users to update their own uploads
-create policy "Users can update their own uploads" on uploads
-  for update using (auth.uid() = user_id);
+CREATE POLICY "Users can update their own uploads" ON uploads
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- Add indexes for better performance
+CREATE INDEX IF NOT EXISTS idx_uploads_user_id ON uploads(user_id);
+CREATE INDEX IF NOT EXISTS idx_uploads_status ON uploads(status);
+CREATE INDEX IF NOT EXISTS idx_uploads_created_at ON uploads(created_at DESC);
 
 create table if not exists invoices (
   id uuid primary key default gen_random_uuid(),

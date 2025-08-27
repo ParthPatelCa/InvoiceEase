@@ -139,8 +139,22 @@ export async function GET(
 
     console.log('Download API - Generating CSV for job:', upload.id)
 
-    // Generate mock CSV data for MVP
-    const csvData = generateMockInvoiceCSV(upload.filename, upload.invoice_count || 4)
+    // Use the real extracted CSV data or generate from stored data
+    let csvData: string
+    
+    if (upload.csv_data) {
+      console.log('Download API - Using stored CSV data')
+      csvData = upload.csv_data
+    } else if (upload.extracted_data) {
+      console.log('Download API - Generating CSV from stored extracted data')
+      const { convertToCSV } = await import('@/lib/pdf-processor')
+      const extractedData = JSON.parse(upload.extracted_data)
+      csvData = convertToCSV(extractedData)
+    } else {
+      console.log('Download API - No extracted data found, generating fallback CSV')
+      // Fallback to basic CSV with file info
+      csvData = generateMockInvoiceCSV(upload.filename, upload.invoice_count || 1)
+    }
     
     // Create response with CSV file
     const response = new NextResponse(csvData, {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { processPDFInvoice, convertToCSV } from '@/lib/pdf-processor'
 import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
@@ -187,8 +188,8 @@ async function processUpload(request: NextRequest, user: any) {
 
   console.log('Upload API - Upload record saved successfully:', uploadRecord.id)
 
-  // For MVP: Mock processing (simulate delay)
-  // In production, this would trigger OCR/AI processing of PDF
+  // For MVP: Real PDF processing using AI
+  // In production, this would be moved to a queue/background job
   setTimeout(async () => {
     try {
       // Create fresh service role client for the setTimeout callback
@@ -203,10 +204,13 @@ async function processUpload(request: NextRequest, user: any) {
         }
       )
       
-      console.log(`Mock PDF extraction starting for job ${jobId}`)
+      console.log(`Real PDF extraction starting for job ${jobId}`)
       
-      // Mock: Extract sample data from PDF
-      const mockExtractedData = await generateMockExtractedData(fileContent, file.name)
+      // Process PDF and extract real invoice data
+      const result = await processPDFInvoice(fileContent, file.name)
+      const { extractedData, csvData } = result
+      
+      console.log(`PDF extraction completed for job ${jobId}, found ${extractedData.length} invoices`)
       
       // Update status to completed
       const { data: updateResult, error: updateError } = await supabaseAdminCallback
@@ -214,19 +218,21 @@ async function processUpload(request: NextRequest, user: any) {
         .update({ 
           status: 'completed',
           processed_at: new Date().toISOString(),
-          invoice_count: mockExtractedData.length
+          invoice_count: extractedData.length,
+          extracted_data: JSON.stringify(extractedData), // Store the raw extracted data
+          csv_data: csvData // Store the CSV data
         })
         .eq('id', jobId)
         .select()
 
       if (updateError) {
-        console.error(`Mock processing update error for job ${jobId}:`, updateError)
+        console.error(`PDF processing update error for job ${jobId}:`, updateError)
         throw updateError
       }
 
-      console.log(`Mock PDF extraction completed for job ${jobId}`, updateResult)
+      console.log(`Real PDF extraction completed for job ${jobId}`, updateResult)
     } catch (error) {
-      console.error('Mock processing error:', error)
+      console.error('Real PDF processing error:', error)
       
       // Create fresh service role client for error update
       const supabaseAdminError = createSupabaseClient(
@@ -245,11 +251,11 @@ async function processUpload(request: NextRequest, user: any) {
         .from('uploads')
         .update({ 
           status: 'failed',
-          error_message: 'PDF extraction failed'
+          error_message: `PDF extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`
         })
         .eq('id', jobId)
     }
-  }, 3000) // 3 second mock processing delay
+  }, 2000) // 2 second delay for real processing
 
   return NextResponse.json({
     success: true,
@@ -257,32 +263,4 @@ async function processUpload(request: NextRequest, user: any) {
     message: 'File uploaded successfully. Processing started.',
     upload: uploadRecord
   })
-}// Mock function to extract sample invoice data from PDF
-async function generateMockExtractedData(fileContent: Buffer, filename: string) {
-  // For MVP: Generate mock extracted data regardless of input PDF
-  // In production, this would use OCR/AI to extract real data
-  const mockExtractedData = []
-  
-  // Simulate extracting 1-3 invoices from the PDF
-  const invoiceCount = Math.floor(Math.random() * 3) + 1
-  
-  for (let i = 1; i <= invoiceCount; i++) {
-    const invoiceDate = new Date()
-    invoiceDate.setDate(invoiceDate.getDate() - Math.floor(Math.random() * 30))
-    
-    mockExtractedData.push({
-      invoice_number: `INV-${2024}-${Math.floor(Math.random() * 9999).toString().padStart(4, '0')}`,
-      invoice_date: invoiceDate.toISOString().split('T')[0],
-      vendor_name: `Vendor Company ${i}`,
-      vendor_address: `${123 + i} Business St, City, State 12345`,
-      total_amount: (Math.random() * 2000 + 50).toFixed(2),
-      tax_amount: (Math.random() * 200 + 5).toFixed(2),
-      description: `Professional services - Extracted from ${filename}`,
-      currency: 'USD',
-      payment_terms: '30 days',
-      extracted_from: filename
-    })
-  }
-  
-  return mockExtractedData
 }
