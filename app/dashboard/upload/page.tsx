@@ -44,6 +44,11 @@ export default function UploadPage() {
     try {
       console.log('Upload - Getting auth token...')
       
+      // Check if supabase client is available
+      if (!supabase) {
+        throw new Error('Authentication service not available. Please refresh the page.')
+      }
+      
       // Get the current session token
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
