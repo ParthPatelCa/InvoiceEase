@@ -15,16 +15,27 @@ interface ProcessingStatus {
   errorMessage?: string
 }
 
-export default function ProcessingPage({ params }: { params: { jobId: string } }) {
+export default function ProcessingPage({ params }: { params: Promise<{ jobId: string }> }) {
   const [status, setStatus] = useState<ProcessingStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [jobId, setJobId] = useState<string>('')
   const router = useRouter()
 
   useEffect(() => {
+    const getJobId = async () => {
+      const resolvedParams = await params
+      setJobId(resolvedParams.jobId)
+    }
+    getJobId()
+  }, [params])
+
+  useEffect(() => {
+    if (!jobId) return
+
     const checkStatus = async () => {
       try {
-        const response = await fetch(`/api/status/${params.jobId}`)
+        const response = await fetch(`/api/status/${jobId}`)
         const result = await response.json()
 
         if (!response.ok) {
@@ -45,11 +56,13 @@ export default function ProcessingPage({ params }: { params: { jobId: string } }
     }
 
     checkStatus()
-  }, [params.jobId])
+  }, [jobId])
 
   const handleDownload = async () => {
+    if (!jobId) return
+    
     try {
-      const response = await fetch(`/api/download/${params.jobId}`)
+      const response = await fetch(`/api/download/${jobId}`)
       
       if (!response.ok) {
         const error = await response.json()
@@ -61,7 +74,7 @@ export default function ProcessingPage({ params }: { params: { jobId: string } }
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `invoices_${params.jobId}.csv`
+      a.download = `invoices_${jobId}.csv`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
