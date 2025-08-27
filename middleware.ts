@@ -3,13 +3,49 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
-  // TEMPORARILY DISABLE ALL MIDDLEWARE LOGIC FOR DEBUGGING
-  console.log('Middleware - DISABLED - Path:', req.nextUrl.pathname)
+  console.log('Middleware - Processing:', req.nextUrl.pathname)
   
-  // Allow all requests through without any redirects
-  return NextResponse.next({
+  // Create response with cookie handling for auth
+  let supabaseResponse = NextResponse.next({
     request: req,
   })
+
+  // Only handle cookie management for authentication, no redirects
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (supabaseUrl && supabaseAnonKey) {
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        cookies: {
+          getAll() {
+            return req.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value))
+            supabaseResponse = NextResponse.next({
+              request: req,
+            })
+            cookiesToSet.forEach(({ name, value, options }) =>
+              supabaseResponse.cookies.set(name, value, options)
+            )
+          },
+        },
+      }
+    )
+
+    // Just refresh the session to maintain cookies, no redirects
+    try {
+      await supabase.auth.getUser()
+      console.log('Middleware - Session refreshed for:', req.nextUrl.pathname)
+    } catch (error) {
+      console.log('Middleware - Session refresh error:', error)
+    }
+  }
+
+  return supabaseResponse
 }
 
 export const config = {

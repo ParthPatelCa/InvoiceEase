@@ -149,7 +149,7 @@ export default function ProcessingPage({ params }: { params: Promise<{ jobId: st
                 <div className="animate-spin w-16 h-16 mx-auto mb-4 border-4 border-blue-600 border-t-transparent rounded-full"></div>
                 <h1 className="text-3xl font-bold text-gray-900">Processing Your File</h1>
                 <p className="mt-2 text-gray-600">
-                  We're generating invoices from your spreadsheet. This usually takes a few seconds.
+                  We're extracting data from your PDF invoice. This usually takes a few seconds.
                 </p>
               </>
             )}
@@ -163,7 +163,7 @@ export default function ProcessingPage({ params }: { params: Promise<{ jobId: st
                 </div>
                 <h1 className="text-3xl font-bold text-gray-900">Processing Complete!</h1>
                 <p className="mt-2 text-gray-600">
-                  Your invoices have been generated successfully. You can download them as a CSV file.
+                  Your invoice data has been extracted successfully. You can download it as a CSV file.
                 </p>
               </>
             )}
@@ -207,7 +207,7 @@ export default function ProcessingPage({ params }: { params: Promise<{ jobId: st
               )}
               {status.invoiceCount && (
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">Invoices Generated</dt>
+                  <dt className="text-sm font-medium text-gray-500">Data Entries Extracted</dt>
                   <dd className="text-sm text-gray-900">{status.invoiceCount}</dd>
                 </div>
               )}

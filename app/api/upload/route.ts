@@ -4,20 +4,33 @@ import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('Upload API - Starting authentication check...')
+    
     // Check authentication
     const supabase = await createClient()
+    
+    console.log('Upload API - Supabase client created, getting user...')
     
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser()
 
+    console.log('Upload API - Auth result:', {
+      hasUser: !!user,
+      userEmail: user?.email,
+      authError: authError?.message
+    })
+
     if (authError || !user) {
+      console.log('Upload API - Authentication failed:', authError?.message || 'No user')
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
+
+    console.log('Upload API - User authenticated:', user.email)
 
     // Parse form data
     const formData = await request.formData()

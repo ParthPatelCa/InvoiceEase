@@ -13,7 +13,7 @@ export default function AuthLayout({
         <div className="text-center">
           <h2 className="text-3xl font-bold text-foreground">InvoiceEase</h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            Convert spreadsheets to invoices
+            Extract data from PDF invoices
           </p>
         </div>
         
