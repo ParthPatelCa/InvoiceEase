@@ -52,11 +52,29 @@ export default function UploadPage() {
       // Get the current session token
       const { data: { session }, error: sessionError } = await supabase.auth.getSession()
       
-      if (sessionError || !session) {
+      console.log('Upload - Session check result:', {
+        hasSession: !!session,
+        hasAccessToken: !!session?.access_token,
+        userEmail: session?.user?.email,
+        sessionError: sessionError?.message
+      })
+      
+      if (sessionError) {
+        console.error('Upload - Session error:', sessionError)
+        throw new Error(`Authentication error: ${sessionError.message}`)
+      }
+      
+      if (!session) {
+        console.error('Upload - No session found')
         throw new Error('Not authenticated. Please log in again.')
       }
+      
+      if (!session.access_token) {
+        console.error('Upload - No access token in session')
+        throw new Error('Invalid session. Please log in again.')
+      }
 
-      console.log('Upload - Got session, making request...')
+      console.log('Upload - Got valid session, making request...')
 
       const formData = new FormData()
       formData.append('file', file)
@@ -70,17 +88,37 @@ export default function UploadPage() {
         credentials: 'include',
       })
 
+      console.log('Upload - Response status:', response.status)
+      
       const result = await response.json()
+      console.log('Upload - Response data:', result)
 
       if (!response.ok) {
-        throw new Error(result.error || 'Upload failed')
+        const errorMessage = result.error || `Upload failed with status ${response.status}`
+        console.error('Upload - Server error:', errorMessage)
+        throw new Error(errorMessage)
       }
 
+      console.log('Upload - Success! Redirecting to processing page...')
       // Redirect to processing page with job ID
       router.push(`/dashboard/processing/${result.jobId}`)
     } catch (error) {
       console.error('Upload error:', error)
-      alert(error instanceof Error ? error.message : 'Upload failed. Please try again.')
+      
+      // More specific error messages
+      let userMessage = 'Upload failed. Please try again.'
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Authentication') || error.message.includes('Unauthorized')) {
+          userMessage = 'Authentication failed. Please log in again.'
+        } else if (error.message.includes('Network') || error.message.includes('fetch')) {
+          userMessage = 'Network error. Please check your connection and try again.'
+        } else {
+          userMessage = error.message
+        }
+      }
+      
+      alert(userMessage)
     } finally {
       setUploading(false)
     }

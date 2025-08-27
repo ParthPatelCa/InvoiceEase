@@ -22,13 +22,23 @@ export async function POST(request: NextRequest) {
       console.log('Upload API - Token auth result:', {
         hasUser: !!user,
         userEmail: user?.email,
-        authError: authError?.message
+        userId: user?.id,
+        authError: authError?.message,
+        authErrorCode: authError?.code
       })
 
       if (authError || !user) {
-        console.log('Upload API - Token authentication failed:', authError?.message || 'No user')
+        console.log('Upload API - Token authentication failed:', {
+          authError: authError?.message,
+          authErrorCode: authError?.code,
+          hasUser: !!user,
+          tokenLength: token?.length
+        })
         return NextResponse.json(
-          { error: 'Unauthorized - Invalid token' },
+          { 
+            error: 'Unauthorized - Invalid or expired token',
+            details: authError?.message || 'No user found'
+          },
           { status: 401 }
         )
       }
