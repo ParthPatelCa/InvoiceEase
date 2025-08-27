@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
 
 interface ProcessingStatus {
   jobId: string
@@ -35,7 +36,17 @@ export default function ProcessingPage({ params }: { params: Promise<{ jobId: st
 
     const checkStatus = async () => {
       try {
-        const response = await fetch(`/api/status/${jobId}`)
+        // Get auth token for API requests
+        let headers: Record<string, string> = {}
+        
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session?.access_token) {
+            headers['Authorization'] = `Bearer ${session.access_token}`
+          }
+        }
+        
+        const response = await fetch(`/api/status/${jobId}`, { headers })
         const result = await response.json()
 
         if (!response.ok) {
@@ -62,7 +73,17 @@ export default function ProcessingPage({ params }: { params: Promise<{ jobId: st
     if (!jobId) return
     
     try {
-      const response = await fetch(`/api/download/${jobId}`)
+      // Get auth token for API requests
+      let headers: Record<string, string> = {}
+      
+      if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.access_token) {
+          headers['Authorization'] = `Bearer ${session.access_token}`
+        }
+      }
+      
+      const response = await fetch(`/api/download/${jobId}`, { headers })
       
       if (!response.ok) {
         const error = await response.json()

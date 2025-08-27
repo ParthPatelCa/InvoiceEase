@@ -7,19 +7,66 @@ export async function GET(
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
-    // Check authentication
-    const supabase = await createClient()
+    console.log('Status API - Starting authentication check...')
     
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
+    // Try Authorization header first
+    const authHeader = request.headers.get('authorization')
+    console.log('Status API - Auth header present:', !!authHeader)
+    
+    let user = null
+    
+    if (authHeader) {
+      // Use token from header
+      const token = authHeader.replace('Bearer ', '')
+      console.log('Status API - Using token authentication')
+      
+      const supabase = await createClient()
+      const { data: { user: tokenUser }, error: authError } = await supabase.auth.getUser(token)
+      
+      console.log('Status API - Token auth result:', {
+        hasUser: !!tokenUser,
+        userEmail: tokenUser?.email,
+        userId: tokenUser?.id,
+        authError: authError?.message
+      })
 
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      if (authError || !tokenUser) {
+        console.log('Status API - Token authentication failed:', authError?.message || 'No user')
+        return NextResponse.json(
+          { error: 'Unauthorized - Invalid or expired token' },
+          { status: 401 }
+        )
+      }
+
+      user = tokenUser
+      console.log('Status API - User authenticated via token:', user.email)
+      
+    } else {
+      // Fall back to cookie-based auth
+      console.log('Status API - Trying cookie-based authentication...')
+      
+      const supabase = await createClient()
+      const {
+        data: { user: cookieUser },
+        error: authError,
+      } = await supabase.auth.getUser()
+
+      console.log('Status API - Cookie auth result:', {
+        hasUser: !!cookieUser,
+        userEmail: cookieUser?.email,
+        authError: authError?.message
+      })
+
+      if (authError || !cookieUser) {
+        console.log('Status API - Cookie authentication failed:', authError?.message || 'No user')
+        return NextResponse.json(
+          { error: 'Unauthorized - No valid session' },
+          { status: 401 }
+        )
+      }
+
+      user = cookieUser
+      console.log('Status API - User authenticated via cookies:', user.email)
     }
 
     const { jobId } = await params
@@ -31,7 +78,8 @@ export async function GET(
       )
     }
 
-    // Get job status from database
+    // Get job status from database using service role client
+    const supabase = await createClient()
     const { data: upload, error: dbError } = await supabase
       .from('uploads')
       .select('*')
@@ -40,7 +88,7 @@ export async function GET(
       .single()
 
     if (dbError) {
-      console.error('Database error:', dbError)
+      console.error('Status API - Database error:', dbError)
       return NextResponse.json(
         { error: 'Job not found' },
         { status: 404 }
@@ -53,6 +101,8 @@ export async function GET(
         { status: 404 }
       )
     }
+
+    console.log('Status API - Job found:', upload.id, 'Status:', upload.status)
 
     // Return job status
     return NextResponse.json({
