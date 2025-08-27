@@ -19,7 +19,7 @@ create table if not exists organization_members (
 -- MVP Phase 1: Upload tracking table for spreadsheet processing
 create table if not exists uploads (
   id text primary key, -- job_timestamp_random format
-  user_id uuid not null,
+  user_id uuid not null references auth.users(id) on delete cascade,
   filename text not null,
   file_size bigint not null,
   file_type text not null,
@@ -31,6 +31,21 @@ create table if not exists uploads (
   processed_at timestamptz,
   last_downloaded_at timestamptz
 );
+
+-- Enable RLS on uploads table
+alter table uploads enable row level security;
+
+-- Allow users to insert their own uploads
+create policy "Users can insert their own uploads" on uploads
+  for insert with check (auth.uid() = user_id);
+
+-- Allow users to view their own uploads
+create policy "Users can view their own uploads" on uploads
+  for select using (auth.uid() = user_id);
+
+-- Allow users to update their own uploads
+create policy "Users can update their own uploads" on uploads
+  for update using (auth.uid() = user_id);
 
 create table if not exists invoices (
   id uuid primary key default gen_random_uuid(),
