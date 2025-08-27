@@ -46,13 +46,39 @@ export default function ProcessingPage({ params }: { params: Promise<{ jobId: st
           }
         }
         
+        console.log('Processing page - Checking status for job:', jobId)
+        
         const response = await fetch(`/api/status/${jobId}`, { headers })
-        const result = await response.json()
-
+        
+        console.log('Processing page - Status response:', response.status, response.statusText)
+        
         if (!response.ok) {
-          throw new Error(result.error || 'Failed to check status')
+          const errorText = await response.text()
+          console.error('Processing page - Status error response:', errorText)
+          
+          let errorResult
+          try {
+            errorResult = JSON.parse(errorText)
+          } catch (parseError) {
+            console.error('Processing page - Failed to parse error response as JSON:', parseError)
+            throw new Error(`API returned ${response.status}: ${errorText.substring(0, 100)}`)
+          }
+          
+          throw new Error(errorResult.error || 'Failed to check status')
         }
 
+        const resultText = await response.text()
+        let result
+        try {
+          result = JSON.parse(resultText)
+        } catch (parseError) {
+          console.error('Processing page - Failed to parse success response as JSON:', parseError)
+          console.error('Processing page - Response text:', resultText)
+          throw new Error('Invalid JSON response from server')
+        }
+
+        console.log('Processing page - Status result:', result)
+        
         setStatus(result)
         setLoading(false)
 
@@ -61,12 +87,14 @@ export default function ProcessingPage({ params }: { params: Promise<{ jobId: st
           setTimeout(checkStatus, 2000)
         }
       } catch (err) {
+        console.error('Processing page - Status check error:', err)
         setError(err instanceof Error ? err.message : 'Unknown error')
         setLoading(false)
       }
     }
 
-    checkStatus()
+    // Add a small delay before first status check to ensure upload completed
+    setTimeout(checkStatus, 1000)
   }, [jobId])
 
   const handleDownload = async () => {

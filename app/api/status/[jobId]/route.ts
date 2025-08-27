@@ -92,6 +92,7 @@ export async function GET(
     )
     
     console.log('Status API - Using service role client for database operations')
+    console.log('Status API - Querying for jobId:', jobId, 'userId:', user.id)
     
     const { data: upload, error: dbError } = await supabaseAdmin
       .from('uploads')
@@ -104,6 +105,8 @@ export async function GET(
       jobId,
       userId: user.id,
       hasUpload: !!upload,
+      uploadStatus: upload?.status,
+      uploadCreatedAt: upload?.created_at,
       dbErrorCode: dbError?.code,
       dbErrorMessage: dbError?.message
     })
@@ -122,6 +125,17 @@ export async function GET(
     }
 
     if (!upload) {
+      console.log('Status API - No upload record found for job:', jobId, 'user:', user.id)
+      
+      // Let's also try querying without user_id to see if the record exists at all
+      const { data: anyUpload } = await supabaseAdmin
+        .from('uploads')
+        .select('*')
+        .eq('id', jobId)
+        .maybeSingle()
+        
+      console.log('Status API - Upload record exists for any user:', !!anyUpload, anyUpload?.user_id)
+      
       return NextResponse.json(
         { error: 'Job not found' },
         { status: 404 }

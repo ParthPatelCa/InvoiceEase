@@ -191,11 +191,25 @@ async function processUpload(request: NextRequest, user: any) {
   // In production, this would trigger OCR/AI processing of PDF
   setTimeout(async () => {
     try {
+      // Create fresh service role client for the setTimeout callback
+      const supabaseAdminCallback = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      )
+      
+      console.log(`Mock PDF extraction starting for job ${jobId}`)
+      
       // Mock: Extract sample data from PDF
       const mockExtractedData = await generateMockExtractedData(fileContent, file.name)
       
       // Update status to completed
-      await supabaseAdmin
+      const { data: updateResult, error: updateError } = await supabaseAdminCallback
         .from('uploads')
         .update({ 
           status: 'completed',
@@ -203,12 +217,31 @@ async function processUpload(request: NextRequest, user: any) {
           invoice_count: mockExtractedData.length
         })
         .eq('id', jobId)
+        .select()
 
-      console.log(`Mock PDF extraction completed for job ${jobId}`)
+      if (updateError) {
+        console.error(`Mock processing update error for job ${jobId}:`, updateError)
+        throw updateError
+      }
+
+      console.log(`Mock PDF extraction completed for job ${jobId}`, updateResult)
     } catch (error) {
       console.error('Mock processing error:', error)
+      
+      // Create fresh service role client for error update
+      const supabaseAdminError = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false
+          }
+        }
+      )
+      
       // Update status to failed
-      await supabaseAdmin
+      await supabaseAdminError
         .from('uploads')
         .update({ 
           status: 'failed',
