@@ -79,9 +79,9 @@ export default function UploadPage() {
         <div className="bg-white rounded-lg shadow px-6 py-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Upload Your Spreadsheet</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Upload Invoice PDF</h1>
             <p className="mt-2 text-gray-600">
-              Upload your client data spreadsheet and we'll generate professional invoices for you.
+              Upload your PDF invoices and we'll extract the data into a clean CSV format.
             </p>
           </div>
 
@@ -101,7 +101,7 @@ export default function UploadPage() {
           >
             <input
               type="file"
-              accept=".xlsx,.xls,.csv"
+              accept=".pdf"
               onChange={handleFileSelect}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               disabled={uploading}
@@ -134,10 +134,10 @@ export default function UploadPage() {
                 </div>
                 <div>
                   <p className="text-lg font-medium text-gray-900">
-                    Drop your spreadsheet here, or click to browse
+                    Drop your PDF invoice here, or click to browse
                   </p>
                   <p className="text-sm text-gray-500">
-                    Supports .xlsx, .xls, and .csv files up to 10MB
+                    Supports PDF files up to 20MB
                   </p>
                 </div>
               </div>
@@ -146,12 +146,14 @@ export default function UploadPage() {
 
           {/* File Info */}
           <div className="mt-6 bg-gray-50 rounded-lg p-4">
-            <h3 className="text-sm font-medium text-gray-900 mb-2">Expected Format:</h3>
+            <h3 className="text-sm font-medium text-gray-900 mb-2">What We Extract:</h3>
             <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Include columns for: Client Name, Email, Description, Amount</li>
-              <li>• Each row represents one invoice to be generated</li>
-              <li>• Supported formats: Excel (.xlsx, .xls) or CSV (.csv)</li>
-              <li>• Maximum file size: 10MB</li>
+              <li>• Invoice number and date</li>
+              <li>• Vendor name and address</li>
+              <li>• Line items with descriptions and amounts</li>
+              <li>• Total amount and tax details</li>
+              <li>• Output format: Clean CSV for accounting import</li>
+              <li>• Maximum file size: 20MB (up to 20 pages)</li>
             </ul>
           </div>
 
@@ -175,7 +177,7 @@ export default function UploadPage() {
                   <span>Uploading...</span>
                 </div>
               ) : (
-                'Upload & Process'
+                'Extract Invoice Data'
               )}
             </button>
           </div>
