@@ -36,23 +36,46 @@ function LoginForm() {
     }
 
     try {
+      console.log('Attempting to sign in...')
       const { error, data } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) {
+        console.error('Sign in error:', error)
         setMessage(error.message)
       } else if (data.user) {
+        console.log('Sign in successful, user:', data.user.email)
+        
         // Get the redirect URL from search params, default to dashboard
         const redirectedFrom = searchParams.get('redirectedFrom')
         const redirectTo = redirectedFrom || '/dashboard'
         
-        // Use window.location for more reliable redirect in production
-        window.location.href = redirectTo
+        console.log('Redirecting to:', redirectTo)
+        
+        // Try multiple redirect methods for better compatibility
+        try {
+          // Method 1: Use Next.js router first
+          router.push(redirectTo)
+          
+          // Method 2: Fallback to window.location after a short delay
+          setTimeout(() => {
+            if (window.location.pathname.includes('/auth/login')) {
+              console.log('Router redirect failed, using window.location')
+              window.location.href = redirectTo
+            }
+          }, 1000)
+        } catch (redirectError) {
+          console.error('Redirect error:', redirectError)
+          // Method 3: Direct window.location as last resort
+          window.location.href = redirectTo
+        }
+      } else {
+        setMessage('Sign in succeeded but no user data received. Please try again.')
       }
     } catch (error) {
-      console.error('Sign in error:', error)
+      console.error('Sign in exception:', error)
       setMessage('An unexpected error occurred during sign in. Please try again.')
     } finally {
       setLoading(false)
@@ -134,6 +157,20 @@ function LoginForm() {
         >
           {loading ? 'Signing in...' : 'Sign in'}
         </button>
+
+        {/* Debug: Manual redirect button if sign in seems stuck */}
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={() => {
+              console.log('Manual redirect to dashboard')
+              window.location.href = '/dashboard'
+            }}
+            className="text-xs text-gray-500 hover:text-gray-700 underline"
+          >
+            Having issues? Click here to go to dashboard
+          </button>
+        </div>
 
         <div className="text-center">
           <span className="text-sm text-muted-foreground">
