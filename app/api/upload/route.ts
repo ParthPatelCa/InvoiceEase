@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
@@ -77,7 +78,19 @@ export async function POST(request: NextRequest) {
 }
 
 async function processUpload(request: NextRequest, user: any) {
-  const supabase = await createClient()
+  // Use service role client for database operations to bypass RLS
+  const supabaseAdmin = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  )
+  
+  console.log('Upload API - Using service role client for database operations')
   
   // Parse form data
   const formData = await request.formData()
@@ -129,7 +142,7 @@ async function processUpload(request: NextRequest, user: any) {
     status: 'processing'
   })
   
-  const { data: uploadRecord, error: dbError } = await supabase
+  const { data: uploadRecord, error: dbError } = await supabaseAdmin
     .from('uploads')
     .insert([
       {
@@ -172,7 +185,7 @@ async function processUpload(request: NextRequest, user: any) {
       const mockExtractedData = await generateMockExtractedData(fileContent, file.name)
       
       // Update status to completed
-      await supabase
+      await supabaseAdmin
         .from('uploads')
         .update({ 
           status: 'completed',
@@ -185,7 +198,7 @@ async function processUpload(request: NextRequest, user: any) {
     } catch (error) {
       console.error('Mock processing error:', error)
       // Update status to failed
-      await supabase
+      await supabaseAdmin
         .from('uploads')
         .update({ 
           status: 'failed',
