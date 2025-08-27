@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null)
@@ -41,13 +42,27 @@ export default function UploadPage() {
     setUploading(true)
 
     try {
+      console.log('Upload - Getting auth token...')
+      
+      // Get the current session token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError || !session) {
+        throw new Error('Not authenticated. Please log in again.')
+      }
+
+      console.log('Upload - Got session, making request...')
+
       const formData = new FormData()
       formData.append('file', file)
 
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
-        credentials: 'include', // Include cookies for authentication
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        credentials: 'include',
       })
 
       const result = await response.json()
