@@ -5,7 +5,7 @@ import { cookies } from 'next/headers'
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const supabase = createClient()
+    const supabase = await createClient()
     
     const {
       data: { user },
