@@ -26,6 +26,12 @@ export function UploadHistory({ refreshTrigger = 0 }: UploadHistoryProps) {
   const [loading, setLoading] = useState(true)
 
   const fetchUploads = async () => {
+    if (!supabase) {
+      console.error('Supabase client not available')
+      setLoading(false)
+      return
+    }
+
     try {
       const { data, error } = await supabase
         .from('uploads')
