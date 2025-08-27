@@ -221,8 +221,8 @@ export default function Dashboard() {
               <div className="flex items-center">
                 <Upload className="h-8 w-8 text-blue-600 mr-3" />
                 <div>
-                  <h4 className="font-medium text-gray-900">Upload Spreadsheet</h4>
-                  <p className="text-sm text-gray-500">Upload a new file to generate invoices</p>
+                  <h4 className="font-medium text-gray-900">Upload Invoice PDF</h4>
+                  <p className="text-sm text-gray-500">Upload a PDF invoice to extract data</p>
                 </div>
               </div>
             </Link>

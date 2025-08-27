@@ -30,25 +30,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate file type (spreadsheet formats)
+    // Validate file type (PDF files for invoice extraction)
     const allowedTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-      'application/vnd.ms-excel', // .xls
-      'text/csv', // .csv
+      'application/pdf', // .pdf
     ]
 
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { error: 'Invalid file type. Please upload a spreadsheet (.xlsx, .xls, or .csv)' },
+        { error: 'Invalid file type. Please upload a PDF invoice file' },
         { status: 400 }
       )
     }
 
-    // Validate file size (max 10MB for MVP)
-    const maxSize = 10 * 1024 * 1024 // 10MB
+    // Validate file size (max 20MB for MVP)
+    const maxSize = 20 * 1024 * 1024 // 20MB
     if (file.size > maxSize) {
       return NextResponse.json(
-        { error: 'File too large. Maximum size is 10MB' },
+        { error: 'File too large. Maximum size is 20MB' },
         { status: 400 }
       )
     }
@@ -86,11 +84,11 @@ export async function POST(request: NextRequest) {
     }
 
     // For MVP: Mock processing (simulate delay)
-    // In production, this would trigger background processing
+    // In production, this would trigger OCR/AI processing of PDF
     setTimeout(async () => {
       try {
-        // Mock: Generate sample invoice data
-        const mockInvoices = await generateMockInvoices(fileContent, file.name)
+        // Mock: Extract sample data from PDF
+        const mockExtractedData = await generateMockExtractedData(fileContent, file.name)
         
         // Update status to completed
         await supabase
@@ -98,11 +96,11 @@ export async function POST(request: NextRequest) {
           .update({ 
             status: 'completed',
             processed_at: new Date().toISOString(),
-            invoice_count: mockInvoices.length
+            invoice_count: mockExtractedData.length
           })
           .eq('id', jobId)
 
-        console.log(`Mock processing completed for job ${jobId}`)
+        console.log(`Mock PDF extraction completed for job ${jobId}`)
       } catch (error) {
         console.error('Mock processing error:', error)
         // Update status to failed
@@ -110,7 +108,7 @@ export async function POST(request: NextRequest) {
           .from('uploads')
           .update({ 
             status: 'failed',
-            error_message: 'Processing failed'
+            error_message: 'PDF extraction failed'
           })
           .eq('id', jobId)
       }
@@ -132,27 +130,32 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Mock function to generate sample invoice data
-async function generateMockInvoices(fileContent: Buffer, filename: string) {
-  // For MVP: Generate 3-5 mock invoices regardless of input
-  const mockInvoices = []
-  const baseDate = new Date()
+// Mock function to extract sample invoice data from PDF
+async function generateMockExtractedData(fileContent: Buffer, filename: string) {
+  // For MVP: Generate mock extracted data regardless of input PDF
+  // In production, this would use OCR/AI to extract real data
+  const mockExtractedData = []
   
-  for (let i = 1; i <= 4; i++) {
-    const invoiceDate = new Date(baseDate)
-    invoiceDate.setDate(baseDate.getDate() + i)
+  // Simulate extracting 1-3 invoices from the PDF
+  const invoiceCount = Math.floor(Math.random() * 3) + 1
+  
+  for (let i = 1; i <= invoiceCount; i++) {
+    const invoiceDate = new Date()
+    invoiceDate.setDate(invoiceDate.getDate() - Math.floor(Math.random() * 30))
     
-    mockInvoices.push({
-      invoice_number: `INV-${Date.now()}-${i.toString().padStart(3, '0')}`,
-      date: invoiceDate.toISOString().split('T')[0],
-      client_name: `Sample Client ${i}`,
-      client_email: `client${i}@example.com`,
-      description: `Mock service ${i} - Generated from ${filename}`,
-      amount: (Math.random() * 1000 + 100).toFixed(2),
+    mockExtractedData.push({
+      invoice_number: `INV-${2024}-${Math.floor(Math.random() * 9999).toString().padStart(4, '0')}`,
+      invoice_date: invoiceDate.toISOString().split('T')[0],
+      vendor_name: `Vendor Company ${i}`,
+      vendor_address: `${123 + i} Business St, City, State 12345`,
+      total_amount: (Math.random() * 2000 + 50).toFixed(2),
+      tax_amount: (Math.random() * 200 + 5).toFixed(2),
+      description: `Professional services - Extracted from ${filename}`,
       currency: 'USD',
-      status: 'draft'
+      payment_terms: '30 days',
+      extracted_from: filename
     })
   }
   
-  return mockInvoices
+  return mockExtractedData
 }
