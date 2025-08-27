@@ -119,6 +119,16 @@ async function processUpload(request: NextRequest, user: any) {
   const fileContent = Buffer.from(fileBuffer)
   
   // Store upload record in database
+  console.log('Upload API - Storing upload record for user:', user.id)
+  console.log('Upload API - Upload data:', {
+    id: jobId,
+    user_id: user.id,
+    filename: file.name,
+    file_size: file.size,
+    file_type: file.type,
+    status: 'processing'
+  })
+  
   const { data: uploadRecord, error: dbError } = await supabase
     .from('uploads')
     .insert([
@@ -136,12 +146,23 @@ async function processUpload(request: NextRequest, user: any) {
     .single()
 
   if (dbError) {
-    console.error('Database error:', dbError)
+    console.error('Database error details:', {
+      message: dbError.message,
+      details: dbError.details,
+      hint: dbError.hint,
+      code: dbError.code
+    })
     return NextResponse.json(
-      { error: 'Failed to save upload record' },
+      { 
+        error: 'Failed to save upload record',
+        details: dbError.message,
+        code: dbError.code
+      },
       { status: 500 }
     )
   }
+
+  console.log('Upload API - Upload record saved successfully:', uploadRecord.id)
 
   // For MVP: Mock processing (simulate delay)
   // In production, this would trigger OCR/AI processing of PDF
