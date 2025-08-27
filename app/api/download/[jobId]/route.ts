@@ -98,15 +98,31 @@ export async function GET(
       .select('*')
       .eq('id', jobId)
       .eq('user_id', user.id) // Ensure user can only access their own jobs
-      .single()
+      .maybeSingle() // Use maybeSingle instead of single to handle zero results gracefully
 
-    if (dbError || !upload) {
+    console.log('Download API - Database query result:', {
+      jobId,
+      userId: user.id,
+      hasUpload: !!upload,
+      dbErrorCode: dbError?.code,
+      dbErrorMessage: dbError?.message
+    })
+
+    if (dbError) {
       console.error('Download API - Database error:', {
-        message: dbError?.message,
-        details: dbError?.details,
-        hint: dbError?.hint,
-        code: dbError?.code
+        message: dbError.message,
+        details: dbError.details,
+        hint: dbError.hint,
+        code: dbError.code
       })
+      return NextResponse.json(
+        { error: 'Database error occurred' },
+        { status: 500 }
+      )
+    }
+
+    if (!upload) {
+      console.log('Download API - No upload record found for job:', jobId, 'user:', user.id)
       return NextResponse.json(
         { error: 'Job not found' },
         { status: 404 }

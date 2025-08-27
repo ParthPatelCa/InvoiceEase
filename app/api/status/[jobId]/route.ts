@@ -98,7 +98,15 @@ export async function GET(
       .select('*')
       .eq('id', jobId)
       .eq('user_id', user.id) // Ensure user can only access their own jobs
-      .single()
+      .maybeSingle() // Use maybeSingle instead of single to handle zero results gracefully
+
+    console.log('Status API - Database query result:', {
+      jobId,
+      userId: user.id,
+      hasUpload: !!upload,
+      dbErrorCode: dbError?.code,
+      dbErrorMessage: dbError?.message
+    })
 
     if (dbError) {
       console.error('Status API - Database error:', {
@@ -108,8 +116,8 @@ export async function GET(
         code: dbError.code
       })
       return NextResponse.json(
-        { error: 'Job not found' },
-        { status: 404 }
+        { error: 'Database error occurred' },
+        { status: 500 }
       )
     }
 
