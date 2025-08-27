@@ -74,6 +74,7 @@ export default function Dashboard() {
     setRefreshTrigger(prev => prev + 1)
   }
 
+  // Always show loading when auth is loading OR when no user but still loading
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -82,8 +83,17 @@ export default function Dashboard() {
     )
   }
 
+  // If not loading and no user, let middleware handle the redirect
+  // Don't return null immediately - show loading to prevent flash
   if (!user) {
-    return null // Will be redirected by middleware
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting to login...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -61,14 +61,13 @@ export async function middleware(req: NextRequest) {
     const fromLogin = req.nextUrl.searchParams.get('from') === 'login'
     
     if (fromLogin) {
-      console.log('Middleware - Fresh login detected, allowing through')
+      console.log('Middleware - Fresh login detected, allowing through and cleaning URL')
       // Remove the from parameter and allow the request
       const cleanUrl = req.nextUrl.clone()
       cleanUrl.searchParams.delete('from')
-      if (cleanUrl.search !== req.nextUrl.search) {
-        return NextResponse.redirect(cleanUrl)
-      }
-      return supabaseResponse
+      
+      // Always redirect to clean URL to remove the parameter
+      return NextResponse.redirect(cleanUrl)
     }
 
     // Handle dashboard protection - only redirect if no user AND no recent login attempt
@@ -82,7 +81,8 @@ export async function middleware(req: NextRequest) {
         redirectUrl.searchParams.set('redirectedFrom', pathname)
         return NextResponse.redirect(redirectUrl)
       } else {
-        console.log('Middleware - Redirect loop detected, allowing through')
+        console.log('Middleware - Redirect loop detected, allowing through to break cycle')
+        return supabaseResponse
       }
     }
 

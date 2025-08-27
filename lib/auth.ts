@@ -13,13 +13,28 @@ export const useUser = () => {
     // Get initial session
     const getInitialSession = async () => {
       if (!supabase) {
+        console.log('useUser - No supabase client available')
         setLoading(false)
         return
       }
 
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-      setLoading(false)
+      try {
+        console.log('useUser - Getting initial session...')
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('useUser - Session error:', error)
+        }
+        
+        const currentUser = session?.user ?? null
+        console.log('useUser - Initial session user:', currentUser?.email || 'none')
+        
+        setUser(currentUser)
+        setLoading(false)
+      } catch (error) {
+        console.error('useUser - Exception getting session:', error)
+        setLoading(false)
+      }
     }
 
     getInitialSession()
@@ -28,6 +43,7 @@ export const useUser = () => {
     if (supabase) {
       const { data: { subscription } } = supabase.auth.onAuthStateChange(
         async (event, session) => {
+          console.log('useUser - Auth state change:', event, session?.user?.email || 'none')
           setUser(session?.user ?? null)
           setLoading(false)
         }
