@@ -21,7 +21,7 @@ export default function DebugPage() {
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         setAuthState({ user, error: userError })
       } catch (error) {
-        setAuthState({ error: error.message })
+        setAuthState({ error: error instanceof Error ? error.message : 'Unknown error' })
       }
     }
 
