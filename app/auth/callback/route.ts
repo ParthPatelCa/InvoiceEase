@@ -1,18 +1,31 @@
+import { createClient } from '@/lib/supabase-server'
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url)
-  const code = searchParams.get('code')
+  const requestUrl = new URL(request.url)
+  const code = requestUrl.searchParams.get('code')
+  const next = requestUrl.searchParams.get('next') ?? '/dashboard'
 
-  if (code && supabase) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    
-    if (!error) {
-      return NextResponse.redirect(`${origin}/dashboard`)
+  if (code) {
+    try {
+      const supabase = createClient()
+      
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      
+      if (error) {
+        console.error('Auth callback error:', error)
+        return NextResponse.redirect(`${requestUrl.origin}/auth/login?error=auth_callback_error&message=${encodeURIComponent(error.message)}`)
+      }
+
+      // Successful authentication - redirect to dashboard
+      return NextResponse.redirect(`${requestUrl.origin}${next}`)
+      
+    } catch (error) {
+      console.error('Auth callback exception:', error)
+      return NextResponse.redirect(`${requestUrl.origin}/auth/login?error=auth_callback_error&message=${encodeURIComponent('Authentication failed')}`)
     }
   }
 
-  // Return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/auth/login?error=auth_callback_error`)
+  // No code parameter - redirect to login
+  return NextResponse.redirect(`${requestUrl.origin}/auth/login?error=auth_callback_error&message=${encodeURIComponent('No authentication code provided')}`)
 }

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -10,6 +10,19 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const error = searchParams.get('error')
+    const message = searchParams.get('message')
+    
+    if (error === 'auth_callback_error') {
+      const errorMessage = message 
+        ? decodeURIComponent(message)
+        : 'There was an error with email confirmation. Please try signing in.'
+      setMessage(errorMessage)
+    }
+  }, [searchParams])
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -17,28 +30,41 @@ export default function LoginPage() {
     setMessage('')
 
     if (!supabase) {
-      setMessage('Authentication service not available')
+      setMessage('Authentication service not available. Please check your configuration.')
       setLoading(false)
       return
     }
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { error, data } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) {
         setMessage(error.message)
-      } else {
-        router.push('/dashboard')
+      } else if (data.user) {
+        // Get the redirect URL from search params, default to dashboard
+        const redirectedFrom = searchParams.get('redirectedFrom')
+        const redirectTo = redirectedFrom || '/dashboard'
+        
+        // Use window.location for more reliable redirect in production
+        window.location.href = redirectTo
       }
     } catch (error) {
-      setMessage('An error occurred during sign in')
+      console.error('Sign in error:', error)
+      setMessage('An unexpected error occurred during sign in. Please try again.')
     } finally {
       setLoading(false)
     }
   }
+
+  // Debug info for development
+  const isProduction = process.env.NODE_ENV === 'production'
+  const hasSupabaseConfig = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL && 
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  )
 
   return (
     <div className="bg-background p-8 rounded-lg border border-border shadow-sm">
@@ -53,6 +79,19 @@ export default function LoginPage() {
         {message && (
           <div className="p-3 rounded-md text-sm bg-red-50 text-red-700 border border-red-200">
             {message}
+          </div>
+        )}
+
+        {/* Debug info for development */}
+        {!isProduction && !hasSupabaseConfig && (
+          <div className="p-3 rounded-md text-sm bg-yellow-50 text-yellow-700 border border-yellow-200">
+            ⚠️ Missing Supabase configuration. Check your environment variables.
+          </div>
+        )}
+
+        {!supabase && (
+          <div className="p-3 rounded-md text-sm bg-red-50 text-red-700 border border-red-200">
+            ❌ Supabase client not initialized. Please check your configuration.
           </div>
         )}
 
@@ -90,7 +129,7 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !supabase}
           className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring disabled:opacity-50"
         >
           {loading ? 'Signing in...' : 'Sign in'}

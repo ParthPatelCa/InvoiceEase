@@ -3,27 +3,27 @@
 import { useEffect, useState } from 'react'
 import { useUser } from '@/lib/auth'
 import { DashboardLayout } from '@/components/DashboardLayout'
-import { InvoiceTable } from '@/components/InvoiceTable'
-import { UploadButton } from '@/components/UploadButton'
-import { FileText, DollarSign, Clock, AlertCircle } from 'lucide-react'
+import { UploadHistory } from '@/components/UploadHistory'
+import { FileText, Upload, Clock, AlertCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import Link from 'next/link'
 
 interface DashboardStats {
+  totalUploads: number
+  completedUploads: number
+  processingUploads: number
+  failedUploads: number
   totalInvoices: number
-  completedInvoices: number
-  processingInvoices: number
-  failedInvoices: number
-  totalAmount: number
 }
 
 export default function Dashboard() {
   const { user, loading } = useUser()
   const [stats, setStats] = useState<DashboardStats>({
-    totalInvoices: 0,
-    completedInvoices: 0,
-    processingInvoices: 0,
-    failedInvoices: 0,
-    totalAmount: 0
+    totalUploads: 0,
+    completedUploads: 0,
+    processingUploads: 0,
+    failedUploads: 0,
+    totalInvoices: 0
   })
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
@@ -32,30 +32,30 @@ export default function Dashboard() {
 
     try {
       const { data, error } = await supabase
-        .from('invoices')
-        .select('status, total_amount')
+        .from('uploads')
+        .select('status, invoice_count')
 
       if (error) throw error
 
-      const stats = data.reduce((acc: DashboardStats, invoice: any) => {
-        acc.totalInvoices++
-        if (invoice.status === 'completed') {
-          acc.completedInvoices++
-          if (invoice.total_amount) {
-            acc.totalAmount += invoice.total_amount
+      const stats = data.reduce((acc: DashboardStats, upload: any) => {
+        acc.totalUploads++
+        if (upload.status === 'completed') {
+          acc.completedUploads++
+          if (upload.invoice_count) {
+            acc.totalInvoices += upload.invoice_count
           }
-        } else if (invoice.status === 'pending' || invoice.status === 'processing') {
-          acc.processingInvoices++
-        } else if (invoice.status === 'failed') {
-          acc.failedInvoices++
+        } else if (upload.status === 'processing') {
+          acc.processingUploads++
+        } else if (upload.status === 'failed') {
+          acc.failedUploads++
         }
         return acc
       }, {
-        totalInvoices: 0,
-        completedInvoices: 0,
-        processingInvoices: 0,
-        failedInvoices: 0,
-        totalAmount: 0
+        totalUploads: 0,
+        completedUploads: 0,
+        processingUploads: 0,
+        failedUploads: 0,
+        totalInvoices: 0
       })
 
       setStats(stats)
@@ -99,6 +99,15 @@ export default function Dashboard() {
               Welcome back! Here's an overview of your invoice processing activity.
             </p>
           </div>
+          <div className="mt-4 flex md:mt-0 md:ml-4">
+            <Link
+              href="/dashboard/upload"
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Upload Spreadsheet
+            </Link>
+          </div>
         </div>
 
         {/* Stats Grid */}
@@ -107,15 +116,15 @@ export default function Dashboard() {
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <FileText className="h-6 w-6 text-gray-400" />
+                  <Upload className="h-6 w-6 text-gray-400" />
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">
-                      Total Invoices
+                      Total Uploads
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {stats.totalInvoices}
+                      {stats.totalUploads}
                     </dd>
                   </dl>
                 </div>
@@ -127,15 +136,15 @@ export default function Dashboard() {
             <div className="p-5">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <DollarSign className="h-6 w-6 text-green-400" />
+                  <FileText className="h-6 w-6 text-green-400" />
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">
-                      Total Amount
+                      Invoices Generated
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      ${stats.totalAmount.toFixed(2)}
+                      {stats.totalInvoices}
                     </dd>
                   </dl>
                 </div>
@@ -155,7 +164,7 @@ export default function Dashboard() {
                       Processing
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {stats.processingInvoices}
+                      {stats.processingUploads}
                     </dd>
                   </dl>
                 </div>
@@ -175,7 +184,7 @@ export default function Dashboard() {
                       Failed
                     </dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {stats.failedInvoices}
+                      {stats.failedUploads}
                     </dd>
                   </dl>
                 </div>
@@ -184,30 +193,47 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Upload Section */}
-          <div className="lg:col-span-1">
-            <UploadButton onUploadComplete={handleUploadComplete} />
-          </div>
-
-          {/* Recent Activity */}
-          <div className="lg:col-span-2">
-            <div className="bg-white shadow rounded-lg p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Recent Activity
-              </h3>
-              <div className="text-sm text-gray-500">
-                <p>• {stats.completedInvoices} invoices processed this month</p>
-                <p>• {stats.processingInvoices} invoices currently processing</p>
-                <p>• Last upload: {stats.totalInvoices > 0 ? 'Recently' : 'None yet'}</p>
+        {/* Quick Actions */}
+        <div className="bg-white shadow rounded-lg p-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link
+              href="/dashboard/upload"
+              className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors"
+            >
+              <div className="flex items-center">
+                <Upload className="h-8 w-8 text-blue-600 mr-3" />
+                <div>
+                  <h4 className="font-medium text-gray-900">Upload Spreadsheet</h4>
+                  <p className="text-sm text-gray-500">Upload a new file to generate invoices</p>
+                </div>
+              </div>
+            </Link>
+            
+            <div className="p-4 border border-gray-200 rounded-lg opacity-50">
+              <div className="flex items-center">
+                <FileText className="h-8 w-8 text-gray-400 mr-3" />
+                <div>
+                  <h4 className="font-medium text-gray-500">View Templates</h4>
+                  <p className="text-sm text-gray-400">Coming soon - Invoice templates</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-4 border border-gray-200 rounded-lg opacity-50">
+              <div className="flex items-center">
+                <Clock className="h-8 w-8 text-gray-400 mr-3" />
+                <div>
+                  <h4 className="font-medium text-gray-500">Schedule Processing</h4>
+                  <p className="text-sm text-gray-400">Coming soon - Automated processing</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Invoice Table */}
-        <InvoiceTable refreshTrigger={refreshTrigger} />
+        {/* Upload History */}
+        <UploadHistory refreshTrigger={refreshTrigger} />
       </div>
     </DashboardLayout>
   )

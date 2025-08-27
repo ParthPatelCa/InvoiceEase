@@ -16,6 +16,22 @@ create table if not exists organization_members (
   primary key (organization_id, user_id)
 );
 
+-- MVP Phase 1: Upload tracking table for spreadsheet processing
+create table if not exists uploads (
+  id text primary key, -- job_timestamp_random format
+  user_id uuid not null,
+  filename text not null,
+  file_size bigint not null,
+  file_type text not null,
+  status text not null default 'processing', -- processing | completed | failed
+  invoice_count int,
+  download_count int not null default 0,
+  error_message text,
+  created_at timestamptz not null default now(),
+  processed_at timestamptz,
+  last_downloaded_at timestamptz
+);
+
 create table if not exists invoices (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references organizations(id) on delete cascade,
