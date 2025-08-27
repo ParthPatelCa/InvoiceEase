@@ -70,11 +70,19 @@ export default function Dashboard() {
     }
   }, [user, refreshTrigger])
 
+  // Client-side redirect when not loading and no user
+  useEffect(() => {
+    if (!loading && !user) {
+      console.log('Dashboard - No user found, redirecting to login')
+      window.location.href = '/auth/login'
+    }
+  }, [loading, user])
+
   const handleUploadComplete = () => {
     setRefreshTrigger(prev => prev + 1)
   }
 
-  // Always show loading when auth is loading OR when no user but still loading
+  // Show loading while auth is loading
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -83,8 +91,7 @@ export default function Dashboard() {
     )
   }
 
-  // If not loading and no user, let middleware handle the redirect
-  // Don't return null immediately - show loading to prevent flash
+  // Show loading while redirecting to login
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

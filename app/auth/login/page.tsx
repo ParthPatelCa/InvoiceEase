@@ -48,20 +48,9 @@ function LoginForm() {
       } else if (data.user) {
         console.log('Sign in successful, user:', data.user.email)
         
-        // Get the redirect URL from search params, default to dashboard
-        const redirectedFrom = searchParams.get('redirectedFrom')
-        const redirectTo = redirectedFrom || '/dashboard'
-        
-        console.log('Redirecting to:', redirectTo)
-        
-        // Add a flag to indicate this is a fresh login to help middleware
-        const redirectUrl = new URL(redirectTo, window.location.origin)
-        redirectUrl.searchParams.set('from', 'login')
-        
-        console.log('Final redirect URL:', redirectUrl.toString())
-        
-        // Use location.href for reliable redirect
-        window.location.href = redirectUrl.toString()
+        // Simple redirect - no complex parameter handling
+        console.log('Redirecting to dashboard...')
+        window.location.href = '/dashboard'
       } else {
         setMessage('Sign in succeeded but no user data received. Please try again.')
       }
