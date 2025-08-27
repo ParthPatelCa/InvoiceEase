@@ -50,34 +50,54 @@ export async function middleware(req: NextRequest) {
       error: userError
     } = await supabase.auth.getUser()
 
-    console.log('Middleware - Path:', req.nextUrl.pathname, 'User:', user?.email || 'none', 'Error:', userError?.message || 'none')
+    const pathname = req.nextUrl.pathname
+    const hasUser = !!user
+    const isAuthPage = pathname.startsWith('/auth/') && pathname !== '/auth/callback'
+    const isDashboardPage = pathname.startsWith('/dashboard')
+    
+    console.log('Middleware - Path:', pathname, 'User:', user?.email || 'none', 'Has User:', hasUser)
 
-    // Check if accessing protected dashboard routes
-    if (req.nextUrl.pathname.startsWith('/dashboard')) {
-      if (!user) {
-        console.log('Middleware - Redirecting to login, no user found')
-        // Redirect unauthenticated users to login
+    // Check for fresh login redirect - if coming from login with specific parameter, always allow through
+    const fromLogin = req.nextUrl.searchParams.get('from') === 'login'
+    
+    if (fromLogin) {
+      console.log('Middleware - Fresh login detected, allowing through')
+      // Remove the from parameter and allow the request
+      const cleanUrl = req.nextUrl.clone()
+      cleanUrl.searchParams.delete('from')
+      if (cleanUrl.search !== req.nextUrl.search) {
+        return NextResponse.redirect(cleanUrl)
+      }
+      return supabaseResponse
+    }
+
+    // Handle dashboard protection - only redirect if no user AND no recent login attempt
+    if (isDashboardPage && !hasUser) {
+      // Check if this is a recent redirect to prevent loops
+      const redirectedFrom = req.nextUrl.searchParams.get('redirectedFrom')
+      if (redirectedFrom !== pathname) {
+        console.log('Middleware - Protecting dashboard, redirecting to login')
         const redirectUrl = req.nextUrl.clone()
         redirectUrl.pathname = '/auth/login'
-        redirectUrl.searchParams.set('redirectedFrom', req.nextUrl.pathname)
+        redirectUrl.searchParams.set('redirectedFrom', pathname)
         return NextResponse.redirect(redirectUrl)
       } else {
-        console.log('Middleware - User authenticated, allowing dashboard access')
+        console.log('Middleware - Redirect loop detected, allowing through')
       }
     }
 
-    // Redirect to dashboard if accessing auth pages with session (except callback)
-    if (req.nextUrl.pathname.startsWith('/auth/') && 
-        req.nextUrl.pathname !== '/auth/callback') {
-      
-      if (user) {
-        console.log('Middleware - User authenticated, redirecting from auth page to dashboard')
+    // Handle auth page redirects - only if user exists AND not in a redirect loop
+    if (isAuthPage && hasUser) {
+      // Don't redirect if we just came from dashboard (prevents loops)
+      const redirectedFrom = req.nextUrl.searchParams.get('redirectedFrom')
+      if (!redirectedFrom) {
+        console.log('Middleware - User authenticated, redirecting from auth to dashboard')
         const redirectUrl = req.nextUrl.clone()
         redirectUrl.pathname = '/dashboard'
-        redirectUrl.search = '' // Clear any search params
+        redirectUrl.search = ''
         return NextResponse.redirect(redirectUrl)
       } else {
-        console.log('Middleware - No user, allowing auth page access')
+        console.log('Middleware - In redirect chain, allowing auth page access')
       }
     }
 

@@ -48,17 +48,20 @@ function LoginForm() {
       } else if (data.user) {
         console.log('Sign in successful, user:', data.user.email)
         
-        // Wait a moment for session to propagate to server
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
         // Get the redirect URL from search params, default to dashboard
         const redirectedFrom = searchParams.get('redirectedFrom')
         const redirectTo = redirectedFrom || '/dashboard'
         
         console.log('Redirecting to:', redirectTo)
         
-        // Force a full page reload to ensure middleware picks up the session
-        window.location.href = redirectTo
+        // Add a flag to indicate this is a fresh login to help middleware
+        const redirectUrl = new URL(redirectTo, window.location.origin)
+        redirectUrl.searchParams.set('from', 'login')
+        
+        console.log('Final redirect URL:', redirectUrl.toString())
+        
+        // Use location.href for reliable redirect
+        window.location.href = redirectUrl.toString()
       } else {
         setMessage('Sign in succeeded but no user data received. Please try again.')
       }
