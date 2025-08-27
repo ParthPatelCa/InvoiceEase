@@ -48,29 +48,17 @@ function LoginForm() {
       } else if (data.user) {
         console.log('Sign in successful, user:', data.user.email)
         
+        // Wait a moment for session to propagate to server
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
         // Get the redirect URL from search params, default to dashboard
         const redirectedFrom = searchParams.get('redirectedFrom')
         const redirectTo = redirectedFrom || '/dashboard'
         
         console.log('Redirecting to:', redirectTo)
         
-        // Try multiple redirect methods for better compatibility
-        try {
-          // Method 1: Use Next.js router first
-          router.push(redirectTo)
-          
-          // Method 2: Fallback to window.location after a short delay
-          setTimeout(() => {
-            if (window.location.pathname.includes('/auth/login')) {
-              console.log('Router redirect failed, using window.location')
-              window.location.href = redirectTo
-            }
-          }, 1000)
-        } catch (redirectError) {
-          console.error('Redirect error:', redirectError)
-          // Method 3: Direct window.location as last resort
-          window.location.href = redirectTo
-        }
+        // Force a full page reload to ensure middleware picks up the session
+        window.location.href = redirectTo
       } else {
         setMessage('Sign in succeeded but no user data received. Please try again.')
       }
