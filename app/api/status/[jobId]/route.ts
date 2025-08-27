@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 
 export async function GET(
@@ -79,8 +80,20 @@ export async function GET(
     }
 
     // Get job status from database using service role client
-    const supabase = await createClient()
-    const { data: upload, error: dbError } = await supabase
+    const supabaseAdmin = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
+    
+    console.log('Status API - Using service role client for database operations')
+    
+    const { data: upload, error: dbError } = await supabaseAdmin
       .from('uploads')
       .select('*')
       .eq('id', jobId)
@@ -88,7 +101,12 @@ export async function GET(
       .single()
 
     if (dbError) {
-      console.error('Status API - Database error:', dbError)
+      console.error('Status API - Database error:', {
+        message: dbError.message,
+        details: dbError.details,
+        hint: dbError.hint,
+        code: dbError.code
+      })
       return NextResponse.json(
         { error: 'Job not found' },
         { status: 404 }
